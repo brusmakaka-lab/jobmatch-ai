@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ApplicationStatus {
+  saved
+  applied
+  interview
+  rejected
+  offer
+}
+
+model User {
+  id          String      @id @default(cuid())
+  name        String
+  email       String      @unique
+  headline    String?
+  location    String?
+  targetRole  String?
+  bio         String?
+  resumes     Resume[]
+  jobPosts    JobPost[]
+  analyses    JobAnalysis[]
+  coverLetters CoverLetter[]
+  applications Application[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Resume {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  content   String   @db.Text
+  source    String   @default("paste")
+  isActive  Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analyses  JobAnalysis[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, isActive])
+}
+
+model JobPost {
+  id          String   @id @default(cuid())
+  userId      String
+  company     String
+  title       String
+  location    String?
+  description String   @db.Text
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analyses    JobAnalysis[]
+  applications Application[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, createdAt])
+}
+
+model JobAnalysis {
+  id                    String   @id @default(cuid())
+  userId                String
+  resumeId              String
+  jobPostId             String
+  matchScore            Int
+  summary               String   @db.Text
+  strengths             String[]
+  weaknesses            String[]
+  missingSkills         String[]
+  suggestedImprovements String[]
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resume                Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  jobPost               JobPost  @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  coverLetter           CoverLetter?
+  application           Application?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId, createdAt])
+}
+
+model CoverLetter {
+  id            String      @id @default(cuid())
+  userId        String
+  jobAnalysisId String      @unique
+  content       String      @db.Text
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobAnalysis   JobAnalysis @relation(fields: [jobAnalysisId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([userId, createdAt])
+}
+
+model Application {
+  id            String            @id @default(cuid())
+  userId        String
+  jobPostId     String
+  jobAnalysisId String?           @unique
+  status        ApplicationStatus @default(saved)
+  notes         String?           @db.Text
+  nextStep      String?
+  dueDate       DateTime?
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobPost       JobPost           @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  jobAnalysis   JobAnalysis?      @relation(fields: [jobAnalysisId], references: [id], onDelete: SetNull)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, updatedAt])
+}
