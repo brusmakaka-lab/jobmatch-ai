@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import type { PoolConfig } from "pg";
 import type { ApplicationStatus } from "../src/generated/prisma/enums";
 
 const connectionString = process.env.DATABASE_URL;
@@ -10,8 +11,18 @@ if (!connectionString) {
 }
 
 const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString }),
+  adapter: new PrismaPg(getPgConfig(connectionString)),
 });
+
+function getPgConfig(connectionString: string): PoolConfig {
+  const hostname = new URL(connectionString).hostname;
+  const isLocalDatabase = hostname === "localhost" || hostname === "127.0.0.1";
+
+  return {
+    connectionString,
+    ssl: isLocalDatabase ? undefined : { rejectUnauthorized: true },
+  };
+}
 
 type SeedAnalysis = {
   company: string;
